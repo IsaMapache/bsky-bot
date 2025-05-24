@@ -62,6 +62,7 @@ class LiveBot:
                 self.config.bluesky_handle,
                 self.config.bluesky_app_password
             )
+            self.logger.info("Running in REAL MODE - posts will be made to Bluesky")
         
         # State tracking
         self._last_live_status = False
