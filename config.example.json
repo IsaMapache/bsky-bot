@@ -1,0 +1,15 @@
+{
+  "twitch": {
+    "username": "your_twitch_username",
+    "client_id": "your_twitch_client_id",
+    "client_secret": "your_twitch_client_secret"
+  },
+  "bluesky": {
+    "handle": "yourhandle.bsky.social",
+    "app_password": "your-app-password"
+  },
+  "settings": {
+    "check_interval": 60,
+    "post_template": "\ud83d\udd34 I'm now live on Twitch! Come join me: https://twitch.tv/{username}"
+  }
+}
