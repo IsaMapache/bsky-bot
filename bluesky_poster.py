@@ -8,11 +8,12 @@ from typing import Optional
 from datetime import datetime
 
 try:
-    from atproto import Client
+    from atproto import Client, client_utils
     from atproto.exceptions import AtProtocolError
 except ImportError:
     # Fallback for development/testing
     Client = None
+    client_utils = None
     AtProtocolError = Exception
 
 
@@ -32,7 +33,7 @@ class BlueSkyPoster:
             handle: Bluesky handle (e.g., "user.bsky.social")
             app_password: App-specific password for Bluesky
         """
-        if Client is None:
+        if Client is None or client_utils is None:
             raise BlueSkyPostError("atproto library not available. Install with: pip install atproto")
         
         self.handle = handle
@@ -72,12 +73,12 @@ class BlueSkyPoster:
         except Exception as e:
             raise BlueSkyPostError(f"Unexpected error authenticating with Bluesky: {e}")
     
-    def post(self, text: str, force: bool = False) -> bool:
+    def post(self, text, force: bool = False) -> bool:
         """
         Post text to Bluesky.
         
         Args:
-            text: Text content to post
+            text: Text content to post (str or TextBuilder)
             force: Force post even if duplicate
             
         Returns:
@@ -86,19 +87,22 @@ class BlueSkyPoster:
         Raises:
             BlueSkyPostError: If unable to post
         """
+        # Convert TextBuilder to string for duplicate checking
+        text_content = text.build_text() if hasattr(text, 'build_text') else text
+        
         # Check for duplicate posts (unless forced)
-        if not force and self._is_duplicate_post(text):
+        if not force and self._is_duplicate_post(text_content):
             self.logger.info("Skipping duplicate post")
             return False
-        
+
         try:
             client = self._get_client()
             
-            self.logger.info(f"Posting to Bluesky: {text[:50]}...")
+            self.logger.info(f"Posting to Bluesky: {text_content[:50]}...")
             post_response = client.send_post(text)
             
             # Store for duplicate detection
-            self._last_post_content = text
+            self._last_post_content = text_content
             self._last_post_time = datetime.now()
             
             self.logger.info("Successfully posted to Bluesky")
@@ -113,7 +117,7 @@ class BlueSkyPoster:
                               stream_title: Optional[str] = None,
                               game_name: Optional[str] = None) -> bool:
         """
-        Post a live stream notification.
+        Post a live stream notification with clickable link.
         
         Args:
             username: Twitch username
@@ -124,31 +128,27 @@ class BlueSkyPoster:
         Returns:
             True if post was successful, False if skipped
         """
-        # Build a clean, single post that Bluesky can create a link card for
-        post_parts = []
+        # Build rich text with clickable link using TextBuilder
+        text_builder = client_utils.TextBuilder()
         
         # Main announcement
-        post_parts.append("🔴 I'm live on Twitch rn come slide!~")
+        text_builder.text("🔴 I'm live on Twitch rn come slide!~\n\n")
         
         # Add stream details if available
         if stream_title and game_name:
-            post_parts.append(f"📺 {stream_title}")
-            post_parts.append(f"🎮 Playing {game_name}")
+            text_builder.text(f"📺 {stream_title}\n\n🎮 Playing {game_name}\n\n")
         elif stream_title:
-            post_parts.append(f"📺 {stream_title}")
+            text_builder.text(f"📺 {stream_title}\n\n")
         elif game_name:
-            post_parts.append(f"🎮 Playing {game_name}")
+            text_builder.text(f"🎮 Playing {game_name}\n\n")
         
         # Add hashtags
-        post_parts.append("#blacksygamers #gaming #twitch #streaming")
+        text_builder.text("#blacksygamers #gaming #twitch #streaming\n\n")
         
-        # Add URL at the end for best link preview
-        post_parts.append(stream_url)
+        # Add clickable URL - show the actual URL as clickable text
+        text_builder.link(stream_url, stream_url)
         
-        # Join with proper spacing
-        post_text = "\n\n".join(post_parts)
-        
-        return self.post(post_text)
+        return self.post(text_builder)
     
     def _is_duplicate_post(self, text: str) -> bool:
         """
@@ -215,19 +215,58 @@ class MockBlueSkyPoster(BlueSkyPoster):
         """Mock client always succeeds."""
         return self
     
-    def post(self, text: str, force: bool = False) -> bool:
+    def post_live_notification(self, username: str, stream_url: str, 
+                              stream_title: Optional[str] = None,
+                              game_name: Optional[str] = None) -> bool:
+        """
+        Mock version that handles TextBuilder properly by building the text manually.
+        """
+        if client_utils is not None:
+            # Use the real TextBuilder if available
+            return super().post_live_notification(username, stream_url, stream_title, game_name)
+        else:
+            # Fallback: build the text manually to simulate what TextBuilder would create
+            parts = []
+            parts.append("🔴 I'm live on Twitch rn come slide!~")
+            
+            if stream_title and game_name:
+                parts.append(f"📺 {stream_title}")
+                parts.append(f"🎮 Playing {game_name}")
+            elif stream_title:
+                parts.append(f"📺 {stream_title}")
+            elif game_name:
+                parts.append(f"🎮 Playing {game_name}")
+            
+            parts.append("#blacksygamers #gaming #twitch #streaming")
+            parts.append(stream_url)
+            
+            text_content = "\n\n".join(parts)
+            return self.post(text_content)
+    
+    def post(self, text, force: bool = False) -> bool:
         """Mock posting - just log and store."""
-        if not force and self._is_duplicate_post(text):
+        # Convert TextBuilder to string for logging and duplicate checking
+        text_content = text.build_text() if hasattr(text, 'build_text') else text
+        
+        if not force and self._is_duplicate_post(text_content):
             self.logger.info("Skipping duplicate mock post")
             return False
         
-        self.logger.info(f"MOCK POST to Bluesky: {text}")
+        # For mock display, show what the rich text would look like
+        if hasattr(text, 'build_text'):
+            # This is a TextBuilder - show both text and the rich text info
+            self.logger.info(f"MOCK POST to Bluesky (rich text): {text_content}")
+            self.logger.info("Rich text contains links that will be clickable in actual post")
+        else:
+            self.logger.info(f"MOCK POST to Bluesky: {text_content}")
+        
         self.posted_messages.append({
-            'text': text,
-            'time': datetime.now()
+            'text': text_content,
+            'time': datetime.now(),
+            'is_rich_text': hasattr(text, 'build_text')
         })
         
-        self._last_post_content = text
+        self._last_post_content = text_content
         self._last_post_time = datetime.now()
         
         return True
@@ -270,6 +309,12 @@ if __name__ == "__main__":
         
         if success:
             print("✅ Test post successful")
+            # Show the actual post content for verification
+            if poster.posted_messages:
+                last_post = poster.posted_messages[-1]
+                print(f"Posted content:\n{last_post['text']}")
+                if last_post.get('is_rich_text'):
+                    print("📝 Note: This post contains rich text with clickable links!")
         else:
             print("❌ Test post failed")
             
