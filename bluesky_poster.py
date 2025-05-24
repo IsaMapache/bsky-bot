@@ -142,8 +142,11 @@ class BlueSkyPoster:
         elif game_name:
             text_builder.text(f"🎮 Playing {game_name}\n\n")
         
-        # Add hashtags
-        text_builder.text("#blacksygamers #gaming #twitch #streaming\n\n")
+        # Add hashtags as clickable tags
+        text_builder.tag("#blacksygamers", "blacksygamers").text(" ")
+        text_builder.tag("#gaming", "gaming").text(" ")
+        text_builder.tag("#twitch", "twitch").text(" ")
+        text_builder.tag("#streaming", "streaming").text("\n\n")
         
         # Add clickable URL - show the actual URL as clickable text
         text_builder.link(stream_url, stream_url)

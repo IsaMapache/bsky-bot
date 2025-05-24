@@ -25,7 +25,10 @@ def test_text_builder():
     # Build the same content as post_live_notification
     text_builder.text("🔴 I'm live on Twitch rn come slide!~\n\n")
     text_builder.text("📺 Testing Stream\n\n🎮 Playing Just Chatting\n\n")
-    text_builder.text("#blacksygamers #gaming #twitch #streaming\n\n")
+    text_builder.tag("#blacksygamers", "blacksygamers").text(" ")
+    text_builder.tag("#gaming", "gaming").text(" ")
+    text_builder.tag("#twitch", "twitch").text(" ")
+    text_builder.tag("#streaming", "streaming").text("\n\n")
     text_builder.link("https://twitch.tv/testuser", "https://twitch.tv/testuser")
     
     # Show the built text
@@ -37,7 +40,7 @@ def test_text_builder():
     for i, facet in enumerate(facets):
         print(f"  Facet {i+1}: {facet}")
         
-    print("\n✅ When posted to Bluesky, the URL will be a clickable link!")
+    print("\n✅ When posted to Bluesky, hashtags and the URL will be clickable links!")
 
 if __name__ == "__main__":
     test_text_builder() 
