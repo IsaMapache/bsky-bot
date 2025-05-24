@@ -124,18 +124,29 @@ class BlueSkyPoster:
         Returns:
             True if post was successful, False if skipped
         """
-        # Build the post content
-        post_lines = ["🔴 I'm live on Twitch rn come slide!~ #blacksygamers #gaming #twitch #streaming https://twitch.tv/VideoGameComrade/"]
+        # Build a clean, single post that Bluesky can create a link card for
+        post_parts = []
         
-        if stream_title:
-            post_lines.append(f"📺 {stream_title}")
+        # Main announcement
+        post_parts.append("🔴 I'm live on Twitch rn come slide!~")
         
-        if game_name:
-            post_lines.append(f"🎮 Playing {game_name}")
+        # Add stream details if available
+        if stream_title and game_name:
+            post_parts.append(f"📺 {stream_title}")
+            post_parts.append(f"🎮 Playing {game_name}")
+        elif stream_title:
+            post_parts.append(f"📺 {stream_title}")
+        elif game_name:
+            post_parts.append(f"🎮 Playing {game_name}")
         
-        post_lines.append(f"Join me: {stream_url}")
+        # Add hashtags
+        post_parts.append("#blacksygamers #gaming #twitch #streaming")
         
-        post_text = "\n".join(post_lines)
+        # Add URL at the end for best link preview
+        post_parts.append(stream_url)
+        
+        # Join with proper spacing
+        post_text = "\n\n".join(post_parts)
         
         return self.post(post_text)
     
