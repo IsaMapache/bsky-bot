@@ -110,7 +110,7 @@ bsky-bot/
 ├── twitch_monitor.py    # Twitch API integration
 ├── bluesky_poster.py    # Bluesky posting functionality
 ├── scheduler.py         # Windows task scheduling
-├── setup_autostart.py  # Auto-start setup script
+├── setup_autostart.py  # Auto-start setup script -- run as admin
 ├── config.json          # User configuration (create from example)
 ├── config.example.json  # Configuration template
 ├── requirements.txt     # Python dependencies
