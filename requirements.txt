@@ -1,7 +1,7 @@
 # Runtime Dependencies for Bluesky Twitch Live Bot
 
 # Bluesky AT Protocol SDK
-atproto==0.0.46
+atproto==0.0.61
 
 # HTTP requests for Twitch API
 requests==2.31.0

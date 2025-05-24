@@ -125,7 +125,7 @@ class BlueSkyPoster:
             True if post was successful, False if skipped
         """
         # Build the post content
-        post_lines = ["🔴 I'm live on Twitch rn come slide!~ https://twitch.tv/VideoGameComrade/"]
+        post_lines = ["🔴 I'm live on Twitch rn come slide!~ #blacksygamers #gaming #twitch #streaming https://twitch.tv/VideoGameComrade/"]
         
         if stream_title:
             post_lines.append(f"📺 {stream_title}")
@@ -185,6 +185,7 @@ class BlueSkyPoster:
         self.logger.info("Reset duplicate post tracking")
 
 
+class MockBlueSkyPoster(BlueSkyPoster):
     """Mock Bluesky poster for testing without actual posting."""
     
     def __init__(self, handle: str, app_password: str):
