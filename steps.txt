@@ -1,0 +1,50 @@
+# Bluesky Twitch Live Bot - Development Steps
+
+## Project Status: INITIALIZING v0.1.0
+
+### Phase 1: Project Setup and Core Infrastructure
+- [x] Initialize Git repository
+- [x] Create baseline files (README.md, VERSION, steps.txt)
+- [ ] Create requirements.txt with planned dependencies
+- [ ] Create .gitignore for Python and Windows
+- [ ] Create CHANGELOG.md
+- [ ] Initial commit of baseline files
+
+### Phase 2: Core Bot Implementation
+- [ ] Create configuration management system (config.py)
+- [ ] Implement Twitch API monitoring (twitch_monitor.py)
+- [ ] Implement Bluesky posting functionality (bluesky_poster.py)  
+- [ ] Create main bot application (main.py)
+- [ ] Add logging and error handling
+- [ ] Create example configuration file
+
+### Phase 3: Windows Integration
+- [ ] Implement Windows Task Scheduler integration (scheduler.py)
+- [ ] Create auto-start setup script (setup_autostart.py)
+- [ ] Test Windows service functionality
+- [ ] Create batch file for easy execution
+
+### Phase 4: Testing and Polish
+- [ ] Create basic unit tests
+- [ ] Test Twitch API integration
+- [ ] Test Bluesky posting
+- [ ] Test auto-start functionality
+- [ ] Add comprehensive error handling
+- [ ] Create user documentation
+
+### Phase 5: Release Preparation
+- [ ] Final testing on clean Windows system
+- [ ] Update documentation
+- [ ] Create release notes
+- [ ] Tag v0.1.0 release
+
+## Current Priority: Setting up dependencies and core structure
+
+## Blockers: None
+
+## Notes:
+- Focus on Windows-specific implementation
+- Use atproto library for Bluesky integration
+- Use requests for Twitch API calls
+- Implement robust error handling for network issues
+- Ensure bot doesn't spam posts for same stream 

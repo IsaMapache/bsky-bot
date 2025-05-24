@@ -1,0 +1,17 @@
+# Runtime Dependencies for Bluesky Twitch Live Bot
+
+# Bluesky AT Protocol SDK
+atproto==0.0.46
+
+# HTTP requests for Twitch API
+requests==2.31.0
+
+# JSON configuration and data handling (built-in)
+# datetime, time, logging (built-in)
+
+# Windows-specific task scheduling
+# Use built-in subprocess and Windows Task Scheduler
+
+# For development and testing (optional)
+# pytest==7.4.3
+# python-dotenv==1.0.0 
