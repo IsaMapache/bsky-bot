@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-05-26
+
+### Added
+- Hotkey feature (`Shift + \`) to manually trigger a Bluesky post.
+  - Posts current stream details if live.
+  - Posts a generic "Online!" message if offline.
+- `keyboard` library dependency for hotkey detection.
+
+### Changed
+- Updated `bluesky_poster.py` to allow overriding duplicate post checks for manual posts.
+
 ## [0.1.0] - 2024-01-XX
 
 ### Added

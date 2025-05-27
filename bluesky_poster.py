@@ -115,7 +115,8 @@ class BlueSkyPoster:
     
     def post_live_notification(self, username: str, stream_url: str, 
                               stream_title: Optional[str] = None,
-                              game_name: Optional[str] = None) -> bool:
+                              game_name: Optional[str] = None,
+                              is_manual_override: bool = False) -> bool:
         """
         Post a live stream notification with clickable link.
         
@@ -124,6 +125,7 @@ class BlueSkyPoster:
             stream_url: URL to the stream
             stream_title: Optional stream title
             game_name: Optional game being played
+            is_manual_override: If True, bypasses duplicate check for manual posts
             
         Returns:
             True if post was successful, False if skipped
@@ -151,7 +153,7 @@ class BlueSkyPoster:
         # Add clickable URL - show the actual URL as clickable text
         text_builder.link(stream_url, stream_url)
         
-        return self.post(text_builder)
+        return self.post(text_builder, force=is_manual_override)
     
     def _is_duplicate_post(self, text: str) -> bool:
         """
@@ -220,13 +222,28 @@ class MockBlueSkyPoster(BlueSkyPoster):
     
     def post_live_notification(self, username: str, stream_url: str, 
                               stream_title: Optional[str] = None,
-                              game_name: Optional[str] = None) -> bool:
+                              game_name: Optional[str] = None,
+                              is_manual_override: bool = False) -> bool:
         """
         Mock version that handles TextBuilder properly by building the text manually.
+        Also respects is_manual_override.
         """
         if client_utils is not None:
-            # Use the real TextBuilder if available
-            return super().post_live_notification(username, stream_url, stream_title, game_name)
+            # Use the real TextBuilder if available, pass through is_manual_override
+            text_builder = client_utils.TextBuilder()
+            text_builder.text("🔴 I'm live on Twitch rn come slide!~\n\n")
+            if stream_title and game_name:
+                text_builder.text(f"📺 {stream_title}\n\n🎮 Playing {game_name}\n\n")
+            elif stream_title:
+                text_builder.text(f"📺 {stream_title}\n\n")
+            elif game_name:
+                text_builder.text(f"🎮 Playing {game_name}\n\n")
+            text_builder.tag("#blacksygamers", "blacksygamers").text(" ")
+            text_builder.tag("#gaming", "gaming").text(" ")
+            text_builder.tag("#twitch", "twitch").text(" ")
+            text_builder.tag("#streaming", "streaming").text("\n\n")
+            text_builder.link(stream_url, stream_url)
+            return self.post(text_builder, force=is_manual_override)
         else:
             # Fallback: build the text manually to simulate what TextBuilder would create
             parts = []
@@ -244,7 +261,7 @@ class MockBlueSkyPoster(BlueSkyPoster):
             parts.append(stream_url)
             
             text_content = "\n\n".join(parts)
-            return self.post(text_content)
+            return self.post(text_content, force=is_manual_override)
     
     def post(self, text, force: bool = False) -> bool:
         """Mock posting - just log and store."""
@@ -307,7 +324,8 @@ if __name__ == "__main__":
             username="testuser",
             stream_url="https://twitch.tv/testuser",
             stream_title="Testing Stream",
-            game_name="Just Chatting"
+            game_name="Just Chatting",
+            is_manual_override=False
         )
         
         if success:

@@ -9,6 +9,9 @@ requests==2.31.0
 # JSON configuration and data handling (built-in)
 # datetime, time, logging (built-in)
 
+# Keyboard input detection
+keyboard==0.13.5
+
 # Windows-specific task scheduling
 # Use built-in subprocess and Windows Task Scheduler
 

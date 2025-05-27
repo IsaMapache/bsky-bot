@@ -10,6 +10,7 @@ import sys
 import os
 from datetime import datetime
 from typing import Optional
+import keyboard # Added for hotkey detection
 
 from config import Config, ConfigurationError
 from twitch_monitor import TwitchMonitor, TwitchAPIError
@@ -202,6 +203,60 @@ class LiveBot:
         # Currently we don't post when going offline, but we could add this feature
         self.logger.info("Stream ended - no notification posted")
     
+    def _trigger_manual_post(self):
+        """Manually triggers a Bluesky post, typically via hotkey."""
+        self.logger.info("Hotkey pressed! Manually triggering Bluesky post.")
+        try:
+            # Get stream information
+            stream_info = self.twitch_monitor.get_stream_info()
+            
+            if stream_info:
+                stream_title = stream_info.get('title')
+                game_name = stream_info.get('game_name')
+                
+                self.logger.info(f"Stream details for manual post - Title: {stream_title}, Game: {game_name}")
+                
+                # Post to Bluesky
+                stream_url = self.twitch_monitor.get_stream_url()
+                success = self.bluesky_poster.post_live_notification(
+                    username=self.config.twitch_username,
+                    stream_url=stream_url,
+                    stream_title=stream_title,
+                    game_name=game_name,
+                    is_manual_override=True # Indicate this is a manual post
+                )
+                
+                if success:
+                    self.logger.info("🦋 Successfully posted manual live notification to Bluesky")
+                else:
+                    # The poster might still skip if it deems it a duplicate,
+                    # even with override, depending on its internal logic.
+                    self.logger.warning("🦋 Manual Bluesky post was skipped (check poster logic for override)")
+            else:
+                # If not live, we can still post a generic message or do nothing
+                self.logger.info("Twitch stream is not currently live. Posting a generic message or configured template.")
+                # Decide if you want to post a "Hey I'm here" message even if not live
+                # For now, let's use the existing template but adjust if no stream_url
+                stream_url = f"https://twitch.tv/{self.config.twitch_username}" # Fallback URL
+                success = self.bluesky_poster.post_live_notification(
+                    username=self.config.twitch_username,
+                    stream_url=stream_url,
+                    stream_title="Online!", # Generic title
+                    game_name="Chatting",    # Generic game
+                    is_manual_override=True
+                )
+                if success:
+                    self.logger.info("🦋 Successfully posted generic manual notification to Bluesky")
+                else:
+                    self.logger.warning("🦋 Generic manual Bluesky post was skipped")
+
+        except BlueSkyPostError as e:
+            self.logger.error(f"Failed to post manually to Bluesky: {e}")
+        except TwitchAPIError as e:
+            self.logger.error(f"Twitch API error during manual post: {e}")
+        except Exception as e:
+            self.logger.error(f"Unexpected error handling manual post: {e}")
+    
     def run(self) -> None:
         """Run the bot main loop."""
         self.logger.info("🚀 Starting Bluesky Twitch Live Bot")
@@ -227,6 +282,13 @@ class LiveBot:
         self.running = True
         cycle_count = 0
         
+        # Setup hotkey listener
+        try:
+            keyboard.add_hotkey('shift+\\\\', self._trigger_manual_post) # Using '\\\\' for backslash
+            self.logger.info(r"Hotkey 'Shift + \\' registered for manual posting.")
+        except Exception as e:
+            self.logger.error(f"Failed to register hotkey: {e}. Manual posting via hotkey will not be available.")
+
         while self.running:
             try:
                 cycle_count += 1

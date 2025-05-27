@@ -23,6 +23,7 @@
 - [x] Implement Windows Task Scheduler integration (setup_autostart.py)
 - [ ] Test Windows service functionality
 - [x] Create batch file for easy execution
+- [x] Implement hotkey override for manual posting (Shift + \)
 
 ### Phase 4: Testing and Polish
 - [x] Create basic unit tests
