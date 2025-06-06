@@ -1,6 +1,6 @@
 # Bluesky Twitch Live Bot
 
-**Version: 0.2.0**
+**Version: 0.3.1**
 
 A Windows bot that automatically posts to your Bluesky account whenever you go live on Twitch.
 
@@ -17,6 +17,7 @@ This bot monitors your Twitch channel status and automatically posts a notificat
 - 🛡️ **Smart Posting**: Prevents duplicate posts for the same stream
 - 🌟 **New Hotkey Feature**: Added hotkey functionality
 - 핫 **Hotkey Override (New!)**: Press `Shift + \` to trigger an immediate Bluesky post, regardless of current stream status or posting cooldowns. Useful for manual announcements or testing.
+- 🖼️ **Link Previews (New!)**: Posts now include rich link preview cards with stream metadata, thumbnails, and descriptions
 
 ## Installation
 
@@ -126,13 +127,14 @@ bsky-bot/
 
 ```
 
-## Current Version: 0.2.0
+## Current Version: 0.3.1
 
 ### Features
 - Basic Twitch live monitoring
-- Bluesky posting integration
+- Bluesky posting integration with rich link previews
 - Windows auto-start capability
 - Configuration management
+- Hotkey override functionality
 
 ## Contributing
 

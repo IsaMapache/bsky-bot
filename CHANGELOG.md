@@ -44,3 +44,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AT Protocol SDK integration
 - Twitch Helix API integration
 - Windows-specific implementation 
+
+## [0.3.1] - 2025-01-30
+
+### Fixed
+- **Hotkey Functionality**: Fixed hotkey registration issues
+  - Improved hotkey detection with multiple fallback combinations
+  - Better error handling for hotkey registration failures
+  - Enhanced logging for hotkey status
+
+### Added
+- **Enhanced Terminal Output**: Improved user experience with better status display
+  - Clear bot status dashboard when starting
+  - Visual feedback when hotkey is triggered
+  - Real-time hotkey status indicators
+  - Prominent manual post notifications
+
+### Changed
+- Hotkey now tries multiple key combinations for better compatibility
+- Added comprehensive terminal feedback for manual posts
+- Improved logging messages with emojis for better readability
+- Better cleanup of hotkey handlers on shutdown
+
+## [0.3.0] - 2025-01-30
+
+### Added
+- **Link Preview Embeds**: Posts now include rich link preview cards with stream metadata
+  - Automatically fetches title, description, and thumbnail from Twitch stream URLs
+  - Creates proper website card embeds in Bluesky posts
+  - Includes both clickable links AND preview cards for better user experience
+- Added `beautifulsoup4` dependency for HTML parsing
+
+### Changed
+- Enhanced `BlueSkyPoster.post_live_notification()` to generate link previews
+- Updated `BlueSkyPoster.post()` method to accept optional embed parameter
+- Improved logging to indicate when link previews are included
+- Updated MockBlueSkyPoster for comprehensive testing with embeds
+
+### Technical
+- Added `_fetch_link_preview()` method to extract OpenGraph metadata
+- Handles thumbnail image upload for preview cards
+- Graceful fallback when link preview fetching fails 

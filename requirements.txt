@@ -6,6 +6,9 @@ atproto==0.0.61
 # HTTP requests for Twitch API
 requests==2.31.0
 
+# HTML parsing for link previews
+beautifulsoup4==4.12.2
+
 # JSON configuration and data handling (built-in)
 # datetime, time, logging (built-in)
 

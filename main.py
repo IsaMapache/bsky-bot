@@ -205,7 +205,11 @@ class LiveBot:
     
     def _trigger_manual_post(self):
         """Manually triggers a Bluesky post, typically via hotkey."""
-        self.logger.info("Hotkey pressed! Manually triggering Bluesky post.")
+        print("\n" + "🔥"*50)
+        print("🔥 HOTKEY TRIGGERED! Manual post initiated...")
+        print("🔥"*50)
+        
+        self.logger.info("🔥 HOTKEY PRESSED! Manually triggering Bluesky post.")
         try:
             # Get stream information
             stream_info = self.twitch_monitor.get_stream_info()
@@ -215,6 +219,8 @@ class LiveBot:
                 game_name = stream_info.get('game_name')
                 
                 self.logger.info(f"Stream details for manual post - Title: {stream_title}, Game: {game_name}")
+                print(f"📺 Stream Title: {stream_title}")
+                print(f"🎮 Playing: {game_name}")
                 
                 # Post to Bluesky
                 stream_url = self.twitch_monitor.get_stream_url()
@@ -227,14 +233,16 @@ class LiveBot:
                 )
                 
                 if success:
+                    print("✅ Successfully posted manual live notification to Bluesky!")
                     self.logger.info("🦋 Successfully posted manual live notification to Bluesky")
                 else:
-                    # The poster might still skip if it deems it a duplicate,
-                    # even with override, depending on its internal logic.
+                    print("⚠️ Manual Bluesky post was skipped (check poster logic for override)")
                     self.logger.warning("🦋 Manual Bluesky post was skipped (check poster logic for override)")
             else:
                 # If not live, we can still post a generic message or do nothing
+                print("📺 Twitch stream is not currently live. Posting generic message...")
                 self.logger.info("Twitch stream is not currently live. Posting a generic message or configured template.")
+                
                 # Decide if you want to post a "Hey I'm here" message even if not live
                 # For now, let's use the existing template but adjust if no stream_url
                 stream_url = f"https://twitch.tv/{self.config.twitch_username}" # Fallback URL
@@ -246,16 +254,25 @@ class LiveBot:
                     is_manual_override=True
                 )
                 if success:
+                    print("✅ Successfully posted generic manual notification to Bluesky!")
                     self.logger.info("🦋 Successfully posted generic manual notification to Bluesky")
                 else:
+                    print("⚠️ Generic manual Bluesky post was skipped")
                     self.logger.warning("🦋 Generic manual Bluesky post was skipped")
 
         except BlueSkyPostError as e:
+            print(f"❌ Failed to post manually to Bluesky: {e}")
             self.logger.error(f"Failed to post manually to Bluesky: {e}")
         except TwitchAPIError as e:
+            print(f"❌ Twitch API error during manual post: {e}")
             self.logger.error(f"Twitch API error during manual post: {e}")
         except Exception as e:
+            print(f"❌ Unexpected error handling manual post: {e}")
             self.logger.error(f"Unexpected error handling manual post: {e}")
+        
+        print("🔥"*50)
+        print("🔥 Manual post attempt completed!")
+        print("🔥"*50 + "\n")
     
     def run(self) -> None:
         """Run the bot main loop."""
@@ -283,11 +300,51 @@ class LiveBot:
         cycle_count = 0
         
         # Setup hotkey listener
+        hotkey_active = False
         try:
-            keyboard.add_hotkey('shift+\\\\', self._trigger_manual_post) # Using '\\\\' for backslash
-            self.logger.info(r"Hotkey 'Shift + \\' registered for manual posting.")
+            # Try different hotkey combinations to find one that works
+            hotkey_combinations = [
+                ('shift+backslash', 'Shift + \\'),
+                ('shift+\\', 'Shift + \\'),
+                ('shift+|', 'Shift + |'),
+                ('ctrl+shift+h', 'Ctrl + Shift + H')
+            ]
+            
+            for hotkey_combo, display_name in hotkey_combinations:
+                try:
+                    keyboard.add_hotkey(hotkey_combo, self._trigger_manual_post)
+                    self.logger.info(f"✅ Hotkey '{display_name}' registered successfully for manual posting!")
+                    self.logger.info(f"💡 Press '{display_name}' at any time to trigger a manual Bluesky post")
+                    hotkey_active = True
+                    break
+                except Exception as inner_e:
+                    self.logger.debug(f"Failed to register {hotkey_combo}: {inner_e}")
+                    continue
+            
+            if not hotkey_active:
+                self.logger.warning("⚠️ Could not register any hotkey combination. Manual posting via hotkey will not be available.")
+                self.logger.info("💡 You can still trigger manual posts by restarting the bot with --once flag")
+                
         except Exception as e:
-            self.logger.error(f"Failed to register hotkey: {e}. Manual posting via hotkey will not be available.")
+            self.logger.error(f"❌ Failed to setup hotkey system: {e}. Manual posting via hotkey will not be available.")
+
+        # Show bot status
+        print("\n" + "="*60)
+        print("🤖 BLUESKY TWITCH LIVE BOT - ACTIVE")
+        print("="*60)
+        print(f"📺 Twitch Channel: {self.config.twitch_username}")
+        print(f"🦋 Bluesky Account: {self.config.bluesky_handle}")
+        print(f"⏱️  Check Interval: {self.config.check_interval} seconds")
+        if hotkey_active:
+            print(f"🔥 HOTKEY ACTIVE: Press 'Shift + \\' for manual post")
+        else:
+            print("⚠️  HOTKEY DISABLED: Manual posting not available")
+        print(f"📊 Current Status: {'🔴 LIVE' if self._last_live_status else '⚫ OFFLINE'}")
+        print("="*60)
+        print("💡 Bot is running... Press Ctrl+C to stop")
+        if hotkey_active:
+            print("💡 Press 'Shift + \\' at any time to manually trigger a post")
+        print("="*60 + "\n")
 
         while self.running:
             try:
@@ -301,6 +358,8 @@ class LiveBot:
                     uptime = datetime.now() - self._startup_time
                     status = "LIVE" if self._last_live_status else "OFFLINE"
                     self.logger.info(f"Bot healthy - Uptime: {uptime}, Stream: {status}, Cycles: {cycle_count}")
+                    if hotkey_active:
+                        self.logger.info("🔥 Hotkey still active - Press 'Shift + \\' for manual post")
                 
                 # Sleep until next check
                 time.sleep(self.config.check_interval)
@@ -312,6 +371,14 @@ class LiveBot:
                 self.logger.error(f"Unexpected error in main loop: {e}")
                 # Continue running despite errors
                 time.sleep(self.config.check_interval)
+        
+        # Cleanup hotkeys
+        if hotkey_active:
+            try:
+                keyboard.unhook_all_hotkeys()
+                self.logger.info("🔥 Hotkeys unregistered")
+            except Exception as e:
+                self.logger.debug(f"Error cleaning up hotkeys: {e}")
         
         self.logger.info("🛑 Bot shutdown complete")
 

@@ -4,7 +4,7 @@ Handles posting to Bluesky using the AT Protocol SDK.
 """
 
 import logging
-from typing import Optional
+from typing import Optional, Dict
 from datetime import datetime
 
 try:
@@ -15,6 +15,13 @@ except ImportError:
     Client = None
     client_utils = None
     AtProtocolError = Exception
+
+try:
+    import requests
+    from bs4 import BeautifulSoup
+except ImportError:
+    requests = None
+    BeautifulSoup = None
 
 
 class BlueSkyPostError(Exception):
@@ -73,13 +80,109 @@ class BlueSkyPoster:
         except Exception as e:
             raise BlueSkyPostError(f"Unexpected error authenticating with Bluesky: {e}")
     
-    def post(self, text, force: bool = False) -> bool:
+    def _fetch_link_preview(self, url: str) -> Optional[Dict]:
+        """
+        Fetch link preview metadata for embedding website cards.
+        
+        Args:
+            url: URL to fetch metadata for
+            
+        Returns:
+            Dict with external embed data or None if failed
+        """
+        if not requests or not BeautifulSoup:
+            self.logger.warning("requests or BeautifulSoup not available for link previews")
+            return None
+        
+        try:
+            # Fetch the HTML
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+            resp = requests.get(url, headers=headers, timeout=10)
+            resp.raise_for_status()
+            
+            soup = BeautifulSoup(resp.text, "html.parser")
+            
+            # Basic card data
+            card = {
+                "uri": url,
+                "title": "",
+                "description": "",
+            }
+            
+            # Try to get title - prefer og:title, fallback to title tag
+            title_tag = soup.find("meta", property="og:title")
+            if title_tag and title_tag.get("content"):
+                card["title"] = title_tag["content"]
+            else:
+                title_element = soup.find("title")
+                if title_element:
+                    card["title"] = title_element.get_text().strip()
+            
+            # Try to get description - prefer og:description, fallback to meta description
+            desc_tag = soup.find("meta", property="og:description")
+            if desc_tag and desc_tag.get("content"):
+                card["description"] = desc_tag["content"]
+            else:
+                desc_element = soup.find("meta", attrs={"name": "description"})
+                if desc_element and desc_element.get("content"):
+                    card["description"] = desc_element["content"]
+            
+            # Try to get image thumbnail
+            image_tag = soup.find("meta", property="og:image")
+            if image_tag and image_tag.get("content"):
+                img_url = image_tag["content"]
+                
+                # Handle relative URLs
+                if img_url.startswith("//"):
+                    img_url = "https:" + img_url
+                elif img_url.startswith("/"):
+                    from urllib.parse import urljoin
+                    img_url = urljoin(url, img_url)
+                elif not img_url.startswith("http"):
+                    # Relative path
+                    from urllib.parse import urljoin
+                    img_url = urljoin(url, img_url)
+                
+                # Download and upload image
+                try:
+                    img_resp = requests.get(img_url, headers=headers, timeout=10)
+                    img_resp.raise_for_status()
+                    
+                    # Size limit check (1MB)
+                    if len(img_resp.content) <= 1000000:
+                        # Upload blob
+                        client = self._get_client()
+                        blob_resp = client.com.atproto.repo.upload_blob(img_resp.content)
+                        card["thumb"] = blob_resp.blob
+                    else:
+                        self.logger.warning(f"Image too large for thumbnail: {len(img_resp.content)} bytes")
+                        
+                except Exception as e:
+                    self.logger.warning(f"Failed to fetch/upload thumbnail: {e}")
+            
+            # Truncate fields to reasonable lengths
+            card["title"] = card["title"][:300] if card["title"] else ""
+            card["description"] = card["description"][:1000] if card["description"] else ""
+            
+            return {
+                "$type": "app.bsky.embed.external",
+                "external": card,
+            }
+            
+        except Exception as e:
+            self.logger.warning(f"Failed to fetch link preview for {url}: {e}")
+            return None
+
+    def post(self, text, force: bool = False, embed: Optional[Dict] = None) -> bool:
         """
         Post text to Bluesky.
         
         Args:
             text: Text content to post (str or TextBuilder)
             force: Force post even if duplicate
+            embed: Optional embed data (e.g., link preview, image, etc.)
             
         Returns:
             True if post was successful, False if skipped
@@ -99,13 +202,19 @@ class BlueSkyPoster:
             client = self._get_client()
             
             self.logger.info(f"Posting to Bluesky: {text_content[:50]}...")
-            post_response = client.send_post(text)
+            
+            # If we have an embed, include it in the post
+            if embed:
+                self.logger.info("Including link preview embed in post")
+                post_response = client.send_post(text, embed=embed)
+            else:
+                post_response = client.send_post(text)
             
             # Store for duplicate detection
             self._last_post_content = text_content
             self._last_post_time = datetime.now()
             
-            self.logger.info("Successfully posted to Bluesky")
+            self.logger.info("Successfully posted to Bluesky with link preview")
             return True
             
         except AtProtocolError as e:
@@ -118,7 +227,7 @@ class BlueSkyPoster:
                               game_name: Optional[str] = None,
                               is_manual_override: bool = False) -> bool:
         """
-        Post a live stream notification with clickable link.
+        Post a live stream notification with clickable link and preview embed.
         
         Args:
             username: Twitch username
@@ -153,7 +262,10 @@ class BlueSkyPoster:
         # Add clickable URL - show the actual URL as clickable text
         text_builder.link(stream_url, stream_url)
         
-        return self.post(text_builder, force=is_manual_override)
+        # Fetch link preview for embedding
+        link_preview = self._fetch_link_preview(stream_url)
+        
+        return self.post(text_builder, force=is_manual_override, embed=link_preview)
     
     def _is_duplicate_post(self, text: str) -> bool:
         """
@@ -220,13 +332,26 @@ class MockBlueSkyPoster(BlueSkyPoster):
         """Mock client always succeeds."""
         return self
     
+    def _fetch_link_preview(self, url: str) -> Optional[Dict]:
+        """Mock link preview - just return a simple mock embed."""
+        self.logger.info(f"MOCK: Fetching link preview for {url}")
+        return {
+            "$type": "app.bsky.embed.external",
+            "external": {
+                "uri": url,
+                "title": "Mock Twitch Stream",
+                "description": "Mock description for testing purposes",
+                # No thumb for mock
+            }
+        }
+    
     def post_live_notification(self, username: str, stream_url: str, 
                               stream_title: Optional[str] = None,
                               game_name: Optional[str] = None,
                               is_manual_override: bool = False) -> bool:
         """
         Mock version that handles TextBuilder properly by building the text manually.
-        Also respects is_manual_override.
+        Also respects is_manual_override and includes link preview.
         """
         if client_utils is not None:
             # Use the real TextBuilder if available, pass through is_manual_override
@@ -243,7 +368,11 @@ class MockBlueSkyPoster(BlueSkyPoster):
             text_builder.tag("#twitch", "twitch").text(" ")
             text_builder.tag("#streaming", "streaming").text("\n\n")
             text_builder.link(stream_url, stream_url)
-            return self.post(text_builder, force=is_manual_override)
+            
+            # Get mock link preview
+            link_preview = self._fetch_link_preview(stream_url)
+            
+            return self.post(text_builder, force=is_manual_override, embed=link_preview)
         else:
             # Fallback: build the text manually to simulate what TextBuilder would create
             parts = []
@@ -261,9 +390,10 @@ class MockBlueSkyPoster(BlueSkyPoster):
             parts.append(stream_url)
             
             text_content = "\n\n".join(parts)
-            return self.post(text_content, force=is_manual_override)
+            link_preview = self._fetch_link_preview(stream_url)
+            return self.post(text_content, force=is_manual_override, embed=link_preview)
     
-    def post(self, text, force: bool = False) -> bool:
+    def post(self, text, force: bool = False, embed: Optional[Dict] = None) -> bool:
         """Mock posting - just log and store."""
         # Convert TextBuilder to string for logging and duplicate checking
         text_content = text.build_text() if hasattr(text, 'build_text') else text
@@ -280,10 +410,23 @@ class MockBlueSkyPoster(BlueSkyPoster):
         else:
             self.logger.info(f"MOCK POST to Bluesky: {text_content}")
         
+        # Show embed info if present
+        if embed:
+            embed_type = embed.get("$type", "unknown")
+            if embed_type == "app.bsky.embed.external":
+                external = embed.get("external", {})
+                title = external.get("title", "No title")
+                desc = external.get("description", "No description")
+                has_thumb = "thumb" in external
+                self.logger.info(f"MOCK EMBED: Link preview - Title: '{title}', Description: '{desc}', Has thumbnail: {has_thumb}")
+            else:
+                self.logger.info(f"MOCK EMBED: Type {embed_type}")
+        
         self.posted_messages.append({
             'text': text_content,
             'time': datetime.now(),
-            'is_rich_text': hasattr(text, 'build_text')
+            'is_rich_text': hasattr(text, 'build_text'),
+            'embed': embed
         })
         
         self._last_post_content = text_content
